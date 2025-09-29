@@ -1,0 +1,13 @@
+﻿# THE SSOM Cursor Rules
+
+- [핵심 원칙](./core-principles.ko.mdc)
+- [환경 파악 & 버전 대응 체크리스트](./environment-checklist.ko.mdc)
+- [모듈 역할 및 상관관계](./module-map.ko.mdc)
+- [작업 워크플로우](./workflow.ko.mdc)
+
+## 기본 지침 요약
+- 모든 산출물은 최소 기능 단위로 얇게 시작하고, Presentation과 Business 로직을 철저히 분리합니다.
+- 파일은 역할별 디렉터리에 배치하고, 200줄(컴포넌트 150줄) 이상이 되면 모듈화합니다.
+- 문서·주석은 한국어, 코드 식별자는 일관된 영어 규칙을 사용합니다.
+- 각 작업마다 테스트/린트 결과를 확인하고, 한국어 커밋 메시지로 `commit & push`를 수행합니다.
+- Supabase RLS, Next.js 15, React 19 등 최신 스택 특성 및 버전을 사전에 조사하여, 설계와 구현 단계에서 반영합니다.

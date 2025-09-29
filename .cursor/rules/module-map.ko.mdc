@@ -1,0 +1,23 @@
+﻿# 모듈 역할 및 상관관계
+
+| 모듈 | 위치 제안 | 책임 | 의존성 |
+| --- | --- | --- | --- |
+| `onboarding-service` | `src/lib/onboarding` | 닉네임/아바타 프리셋 로딩, 입력 검증, Supabase 프로필 생성/업데이트 | Supabase Auth, Storage, `profiles` 테이블 |
+| `thread-service` | `src/lib/threads` | 활성 쓰레드 조회, 예약 쓰레드 fallback, 서버 컴포넌트 데이터 조합 | `threads` 테이블, 레벨 서비스 |
+| `comment-service` | `src/lib/comments` | 트리형 댓글 조회/작성, 낙관적 ID 할당, RLS 대응 검증 | `comments` 테이블, Supabase Realtime |
+| `reaction-service` | `src/lib/reactions` | 하트 토글, 카운트 계산, 상호 좋아요 체크 | `reactions` 테이블, Comment DTO |
+| `level-service` | `src/lib/levels` | 레벨 계산, 상호 공개 로직, 프로필 스냅샷 생성 | `profiles`, `profile_levels`, `calculate_reciprocal_level()` |
+| `ui/presentation` | `src/app/**`, `src/components/**` | 서버컴포넌트 기반 UI, DTO 렌더링, shadcn 스타일 적용 | 위 서비스의 DTO, React/Next API |
+| `supabase-adapters` | `src/lib/adapters/supabase` | 도메인 리포지토리 인터페이스 구현, RPC 호출 캡슐화 | Supabase JS SDK |
+| `testing` | `src/tests/**` | Vitest 스펙, 도메인 순수 함수 테스트, UI 스토리 | 도메인 모듈 |
+
+## 상호작용 흐름
+1. 서버 컴포넌트(예: `app/(feed)/page.tsx`)가 `thread-service`와 `comment-service`를 호출해 초기 데이터를 props 대신 `React.lazy`/`Suspense`로 전달합니다.
+2. 클라이언트 상호작용(댓글 작성, 하트 토글)은 `actions/` 또는 `route handlers`에서 비즈니스 서비스(`comment-service`, `reaction-service`)를 호출하고, 응답 DTO를 presentation에 반환합니다.
+3. 레벨 검증이 필요한 모든 API는 `level-service`를 통해 `reciprocalLevel`을 계산한 후, UI에서는 잠금 상태를 표시합니다.
+4. 프로필 온보딩 완료 후에는 `level-service`의 `unlock` 인터페이스를 통해 레벨 상태를 갱신하고, 결과를 피드 배너에 노출합니다.
+
+## 구현 우선순위
+1. `supabase/schema`에 정의된 테이블/RLS를 기준으로 `adapters` 레이어부터 작성해 테스트에서 모킹 가능하도록 합니다.
+2. 이미 구성된 `src/lib/levels`를 기준으로 다른 도메인 서비스도 동일한 패턴(RORO, 순수 함수 + 포트/어댑터)을 맞춥니다.
+3. Presentation 계층은 도메인 DTO를 그대로 사용하여 storybook 없이도 빠르게 뷰를 검증할 수 있도록 구성합니다.

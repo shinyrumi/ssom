@@ -1,0 +1,14 @@
+﻿node_modules/
+.env
+.env.local
+.supabase
+.swp
+.DS_Store
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.idea/
+.vscode/
+.next/
+dist/
+coverage/
