@@ -1,0 +1,7 @@
+﻿{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "max-lines": ["error", 200],
+    "max-lines-per-function": ["warn", { "max": 50, "skipBlankLines": true, "skipComments": true }]
+  }
+}
