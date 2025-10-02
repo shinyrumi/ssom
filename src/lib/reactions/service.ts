@@ -7,7 +7,7 @@ export type ReactionServiceDependencies = {
 
 export type ReactionService = {
   toggleHeart: (input: ReactionToggleInput) => Promise<ReactionToggleResult>;
-  getMutualLikeBanner: (viewerId: string, targetId: string) => Promise<MutualLikeBanner | null>;
+  getMutualLikeBanner: (viewerId: string) => Promise<MutualLikeBanner | null>;
 };
 
 export const createReactionService = (
@@ -16,7 +16,7 @@ export const createReactionService = (
   async toggleHeart(input) {
     return deps.reactionRepo.toggleHeart(input);
   },
-  async getMutualLikeBanner(viewerId, targetId) {
-    return deps.reactionRepo.getMutualLikeBanner(viewerId, targetId);
+  async getMutualLikeBanner(viewerId) {
+    return deps.reactionRepo.getMutualLikeBanner(viewerId);
   },
 });

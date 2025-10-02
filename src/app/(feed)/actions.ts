@@ -1,6 +1,5 @@
 ﻿'use server';
 
-import { revalidatePath } from 'next/cache';
 import { createSupabaseAdminClient } from '@/lib/adapters/supabase/admin-client';
 import { createSupabaseCommentRepository } from '@/lib/adapters/supabase/comment-repository';
 import { createSupabaseReactionRepository } from '@/lib/adapters/supabase/reaction-repository';
@@ -46,9 +45,6 @@ export async function submitCommentAction(input: {
       content: input.content,
     });
 
-    revalidatePath('/(feed)', 'page');
-    revalidatePath('/', 'page');
-
     return { success: true, comment: commentNode } as const;
   } catch (error) {
     console.error('submitCommentAction error', error);
@@ -72,15 +68,14 @@ export async function toggleHeartAction(input: {
   const reactionService = createReactionService({ reactionRepo });
 
   try {
-    const result = await reactionService.toggleHeart({
+    const reaction = await reactionService.toggleHeart({
       commentId: input.commentId,
       reactorId,
     });
 
-    revalidatePath('/(feed)', 'page');
-    revalidatePath('/', 'page');
+    const mutualLikeBanner = await reactionService.getMutualLikeBanner(reactorId);
 
-    return { success: true, reaction: result } as const;
+    return { success: true, reaction, mutualLikeBanner } as const;
   } catch (error) {
     console.error('toggleHeartAction error', error);
     return { success: false, error: 'SERVER_ERROR' } as const;

@@ -7,15 +7,15 @@ export type CommentServiceDependencies = {
 };
 
 export type CommentService = {
-  listThreadComments: (threadId: string) => Promise<CommentNode[]>;
+  listThreadComments: (params: { threadId: string; viewerId?: string }) => Promise<CommentNode[]>;
   createComment: (input: CreateCommentInput) => Promise<CommentNode>;
 };
 
 export const createCommentService = (
   deps: CommentServiceDependencies,
 ): CommentService => ({
-  async listThreadComments(threadId) {
-    const comments = await deps.commentRepo.listByThread(threadId);
+  async listThreadComments({ threadId, viewerId }) {
+    const comments = await deps.commentRepo.listByThread({ threadId, viewerId });
     return deps.treeBuilder.buildTree(comments);
   },
   async createComment(input) {

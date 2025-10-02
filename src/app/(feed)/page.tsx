@@ -9,6 +9,9 @@ import { FeedSkeleton } from './_components/feed-skeleton';
 import { FeedThread } from './_components/feed-thread';
 
 async function loadFeedData() {
+  const viewerId =
+    process.env.SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
+
   const threadRepo = createSupabaseThreadRepository();
   const commentRepo = createSupabaseCommentRepository();
   const reactionRepo = createSupabaseReactionRepository();
@@ -20,24 +23,18 @@ async function loadFeedData() {
   });
   const reactionService = createReactionService({ reactionRepo });
 
-  const [thread, comments] = await Promise.all([
-    threadService.getThreadOrLatestFallback(),
-    threadService.getActiveThread().then(async (active) => {
-      if (!active) {
-        return [];
-      }
-      return commentService.listThreadComments(active.id);
-    }),
-  ]);
-
-  const mutualLikeBanner = thread
-    ? await reactionService.getMutualLikeBanner('viewer', 'target')
-    : null;
+  const activeThread = await threadService.getActiveThread();
+  const thread = activeThread ?? (await threadService.getThreadOrLatestFallback());
+  const comments = activeThread
+    ? await commentService.listThreadComments({ threadId: activeThread.id, viewerId: viewerId ?? undefined })
+    : [];
+  const mutualLikeBanner = thread && viewerId ? await reactionService.getMutualLikeBanner(viewerId) : null;
 
   return {
     thread,
     comments,
     mutualLikeBanner,
+    viewerId,
   };
 }
 
