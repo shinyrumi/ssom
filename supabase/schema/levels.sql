@@ -1,6 +1,6 @@
 ﻿-- Progressive level schema draft
 
-create type public.profile_level as enum ('L1', 'L2', 'L3', 'L4');
+create type if not exists public.profile_level as enum ('L1', 'L2', 'L3', 'L4');
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users on delete cascade,
@@ -14,7 +14,7 @@ create table if not exists public.profiles (
 create table if not exists public.profile_levels (
   profile_id uuid not null references public.profiles(id) on delete cascade,
   level profile_level not null,
-  data jsonb not null default '{}',
+  data jsonb not null default '{}'::jsonb,
   unlocked_at timestamptz not null default timezone('utc', now()),
   constraint profile_levels_pk primary key (profile_id, level)
 );
@@ -41,7 +41,7 @@ create table if not exists public.level_boosters (
   profile_id uuid not null references public.profiles(id) on delete cascade,
   boost_type text not null,
   multiplier numeric(4,2) not null default 1.00,
-  metadata jsonb not null default '{}',
+  metadata jsonb not null default '{}'::jsonb,
   expires_at timestamptz not null,
   created_at timestamptz not null default timezone('utc', now())
 );
@@ -51,10 +51,9 @@ create table if not exists public.level_unlock_audit (
   profile_id uuid not null references public.profiles(id) on delete cascade,
   level profile_level not null,
   unlocked_at timestamptz not null default timezone('utc', now()),
-  context jsonb not null default '{}'
+  context jsonb not null default '{}'::jsonb
 );
 
--- helper: ordinal rank for comparing enum values
 create or replace function public.level_to_rank(level profile_level)
 returns int language sql stable as $$
   select coalesce(array_position(enum_range(null::profile_level), level), 0);
@@ -78,30 +77,145 @@ alter table public.profile_views enable row level security;
 alter table public.level_boosters enable row level security;
 alter table public.level_unlock_audit enable row level security;
 
--- RLS policies
-create policy profiles_self_access on public.profiles
-  for select using (auth.uid() = id)
-  with check (auth.uid() = id);
+create or replace function public.ensure_policy(
+  policy_name text,
+  relation regclass,
+  policy_sql text
+) returns void language plpgsql as $$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_policies
+    where schemaname = 'public' and policyname = policy_name and tablename = relation::text
+  ) then
+    execute policy_sql;
+  end if;
+end;
+$$;
 
-create policy profile_levels_owner_policy on public.profile_levels
-  for all using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
+select public.ensure_policy(
+  'profiles_select_self',
+  'profiles',
+  $$create policy profiles_select_self on public.profiles for select using (auth.uid() = id);$$
+);
 
-create policy level_progress_owner_policy on public.level_progress
-  for all using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
+select public.ensure_policy(
+  'profiles_insert_self',
+  'profiles',
+  $$create policy profiles_insert_self on public.profiles for insert with check (auth.uid() = id);$$
+);
 
-create policy profile_views_owner_or_target on public.profile_views
-  for select using (auth.uid() = viewer_id or auth.uid() = target_id);
+select public.ensure_policy(
+  'profiles_update_self',
+  'profiles',
+  $$create policy profiles_update_self on public.profiles for update using (auth.uid() = id) with check (auth.uid() = id);$$
+);
 
-create policy profile_views_owner_insert on public.profile_views
-  for insert with check (auth.uid() = viewer_id);
+select public.ensure_policy(
+  'profiles_delete_self',
+  'profiles',
+  $$create policy profiles_delete_self on public.profiles for delete using (auth.uid() = id);$$
+);
 
-create policy level_boosters_owner_policy on public.level_boosters
-  for all using (auth.uid() = profile_id) with check (auth.uid() = profile_id);
+select public.ensure_policy(
+  'profile_levels_select_self',
+  'profile_levels',
+  $$create policy profile_levels_select_self on public.profile_levels for select using (auth.uid() = profile_id);$$
+);
 
-create policy level_unlock_audit_owner_select on public.level_unlock_audit
-  for select using (auth.uid() = profile_id);
+select public.ensure_policy(
+  'profile_levels_modify_self',
+  'profile_levels',
+  $$create policy profile_levels_modify_self on public.profile_levels for insert with check (auth.uid() = profile_id);$$
+);
 
-create policy level_unlock_audit_owner_insert on public.level_unlock_audit
-  for insert with check (auth.uid() = profile_id);
+select public.ensure_policy(
+  'profile_levels_update_self',
+  'profile_levels',
+  $$create policy profile_levels_update_self on public.profile_levels for update using (auth.uid() = profile_id) with check (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'profile_levels_delete_self',
+  'profile_levels',
+  $$create policy profile_levels_delete_self on public.profile_levels for delete using (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_progress_select_self',
+  'level_progress',
+  $$create policy level_progress_select_self on public.level_progress for select using (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_progress_insert_self',
+  'level_progress',
+  $$create policy level_progress_insert_self on public.level_progress for insert with check (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_progress_update_self',
+  'level_progress',
+  $$create policy level_progress_update_self on public.level_progress for update using (auth.uid() = profile_id) with check (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_progress_delete_self',
+  'level_progress',
+  $$create policy level_progress_delete_self on public.level_progress for delete using (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'profile_views_select_self',
+  'profile_views',
+  $$create policy profile_views_select_self on public.profile_views for select using (auth.uid() = viewer_id or auth.uid() = target_id);$$
+);
+
+select public.ensure_policy(
+  'profile_views_insert_self',
+  'profile_views',
+  $$create policy profile_views_insert_self on public.profile_views for insert with check (auth.uid() = viewer_id);$$
+);
+
+select public.ensure_policy(
+  'profile_views_delete_self',
+  'profile_views',
+  $$create policy profile_views_delete_self on public.profile_views for delete using (auth.uid() = viewer_id);$$
+);
+
+select public.ensure_policy(
+  'level_boosters_select_self',
+  'level_boosters',
+  $$create policy level_boosters_select_self on public.level_boosters for select using (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_boosters_insert_self',
+  'level_boosters',
+  $$create policy level_boosters_insert_self on public.level_boosters for insert with check (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_boosters_update_self',
+  'level_boosters',
+  $$create policy level_boosters_update_self on public.level_boosters for update using (auth.uid() = profile_id) with check (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_boosters_delete_self',
+  'level_boosters',
+  $$create policy level_boosters_delete_self on public.level_boosters for delete using (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_unlock_audit_select_self',
+  'level_unlock_audit',
+  $$create policy level_unlock_audit_select_self on public.level_unlock_audit for select using (auth.uid() = profile_id);$$
+);
+
+select public.ensure_policy(
+  'level_unlock_audit_insert_self',
+  'level_unlock_audit',
+  $$create policy level_unlock_audit_insert_self on public.level_unlock_audit for insert with check (auth.uid() = profile_id);$$
+);
 
 -- TODO: add moderator roles and admin bypass policies later.
