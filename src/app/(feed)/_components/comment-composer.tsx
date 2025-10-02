@@ -7,6 +7,8 @@ type CommentComposerProps = {
   parentId?: string | null;
   placeholder?: string;
   onCancel?: () => void;
+  disabled?: boolean;
+  helperText?: string;
 };
 
 type ComposerState = {
@@ -16,15 +18,33 @@ type ComposerState = {
   setError: (value: string | null) => void;
   isPending: boolean;
   startTransition: ReturnType<typeof useTransition>[1];
+  disabled: boolean;
 };
 
-export const CommentComposer = ({ onSubmit, parentId = null, placeholder, onCancel }: CommentComposerProps) => {
+export const CommentComposer = ({
+  onSubmit,
+  parentId = null,
+  placeholder,
+  onCancel,
+  disabled = false,
+  helperText,
+}: CommentComposerProps) => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const state: ComposerState = { message, setMessage, error, setError, isPending, startTransition };
+  const state: ComposerState = {
+    message,
+    setMessage,
+    error,
+    setError,
+    isPending,
+    startTransition,
+    disabled,
+  };
   const handleSubmit = createSubmitHandler({ state, onSubmit, parentId, onCancel });
+
+  const displayHelper = error ?? helperText ?? '';
 
   return (
     <form onSubmit={handleSubmit} className="rounded-3xl bg-neutral-900 p-4 shadow-inner shadow-black/20">
@@ -34,13 +54,14 @@ export const CommentComposer = ({ onSubmit, parentId = null, placeholder, onCanc
         placeholder={placeholder ?? '오늘의 질문에 답해 보세요'}
         className="w-full resize-none rounded-2xl bg-neutral-950/60 p-3 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-rose-500"
         rows={parentId ? 2 : 3}
-        disabled={isPending}
+        disabled={isPending || disabled}
       />
       <ComposerActions
-        error={error}
+        error={displayHelper}
         isPending={isPending}
         parentId={parentId}
         onCancel={onCancel}
+        disabled={disabled}
       />
     </form>
   );
@@ -56,6 +77,9 @@ type SubmitHandlerArgs = {
 function createSubmitHandler({ state, onSubmit, parentId, onCancel }: SubmitHandlerArgs) {
   return (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (state.disabled) {
+      return;
+    }
     state.startTransition(async () => {
       try {
         await onSubmit(state.message, parentId);
@@ -74,9 +98,10 @@ type ComposerActionsProps = {
   isPending: boolean;
   parentId: string | null;
   onCancel?: () => void;
+  disabled: boolean;
 };
 
-function ComposerActions({ error, isPending, parentId, onCancel }: ComposerActionsProps) {
+function ComposerActions({ error, isPending, parentId, onCancel, disabled }: ComposerActionsProps) {
   return (
     <div className="mt-2 flex items-center justify-between">
       <span className="text-xs text-rose-400/80">{error}</span>
@@ -94,7 +119,7 @@ function ComposerActions({ error, isPending, parentId, onCancel }: ComposerActio
         <button
           type="submit"
           className="rounded-full bg-rose-500 px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
-          disabled={isPending}
+          disabled={isPending || disabled}
         >
           {isPending ? '작성 중...' : parentId ? '답글 남기기' : '댓글 남기기'}
         </button>

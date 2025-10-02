@@ -24,14 +24,14 @@ import { submitCommentAction, toggleHeartAction } from '../actions';
 
 type UseCommentInteractionsParams = {
   thread: Thread | null;
-  viewerId: string;
+  viewerId: string | null;
   initialComments: CommentNode[];
   initialBanner: MutualLikeBanner | null;
 };
 
 type SharedContext = {
   thread: Thread | null;
-  viewerId: string;
+  viewerId: string | null;
   commentsRef: MutableRefObject<CommentNode[]>;
   setComments: Dispatch<SetStateAction<CommentNode[]>>;
   setBanner: Dispatch<SetStateAction<MutualLikeBanner | null>>;
@@ -89,6 +89,10 @@ async function performCreateComment(ctx: SharedContext, content: string, parentI
     throw new Error('THREAD_MISSING');
   }
 
+  if (!ctx.viewerId) {
+    throw new Error('AUTHOR_ID_MISSING');
+  }
+
   const trimmed = content.trim();
   if (!trimmed) {
     throw new Error('EMPTY_CONTENT');
@@ -125,6 +129,10 @@ async function performCreateComment(ctx: SharedContext, content: string, parentI
 }
 
 async function performToggleHeart(ctx: SharedContext, commentId: string): Promise<boolean> {
+  if (!ctx.viewerId) {
+    throw new Error('REACTOR_ID_MISSING');
+  }
+
   const existing = findCommentNode(ctx.commentsRef.current, commentId);
   if (!existing) {
     return false;

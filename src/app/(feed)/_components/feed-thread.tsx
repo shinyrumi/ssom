@@ -25,6 +25,7 @@ const toastStyleMap: Record<ToastVariant, string> = {
 
 export function FeedThread({ data }: FeedThreadProps) {
   const controller = useFeedThreadController(data);
+  const canInteract = Boolean(controller.viewerId);
 
   return (
     <section className="space-y-6">
@@ -46,9 +47,15 @@ export function FeedThread({ data }: FeedThreadProps) {
         </div>
       ) : null}
 
-      {controller.hasThread ? <CommentComposer onSubmit={controller.handleTopLevelSubmit} /> : null}
+      {controller.hasThread ? (
+        <CommentComposer
+          onSubmit={controller.handleTopLevelSubmit}
+          disabled={!canInteract}
+          helperText={!canInteract ? '로그인 후 댓글을 남길 수 있습니다.' : undefined}
+        />
+      ) : null}
 
-      <CommentList controller={controller} />
+      <CommentList controller={controller} canInteract={canInteract} />
       <ToastViewer toast={controller.toast} />
     </section>
   );
@@ -56,9 +63,10 @@ export function FeedThread({ data }: FeedThreadProps) {
 
 type CommentListProps = {
   controller: FeedThreadController;
+  canInteract: boolean;
 };
 
-function CommentList({ controller }: CommentListProps) {
+function CommentList({ controller, canInteract }: CommentListProps) {
   if (controller.comments.length === 0) {
     return (
       <div className="space-y-3">
@@ -81,6 +89,8 @@ function CommentList({ controller }: CommentListProps) {
           onCancelReply={controller.cancelReply}
           onSubmitReply={controller.handleReplySubmit}
           activeReplyId={controller.replyTargetId}
+          canHeart={canInteract}
+          canReply={canInteract}
         />
       ))}
     </div>

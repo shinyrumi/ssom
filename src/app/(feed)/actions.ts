@@ -1,25 +1,36 @@
 ﻿'use server';
 
-import { createSupabaseAdminClient } from '@/lib/adapters/supabase/admin-client';
+import { createSupabaseServerClient } from '@/lib/adapters/supabase/server-client';
 import { createSupabaseCommentRepository } from '@/lib/adapters/supabase/comment-repository';
 import { createSupabaseReactionRepository } from '@/lib/adapters/supabase/reaction-repository';
 import { createCommentService, createDefaultCommentTreeBuilder } from '@/lib/comments';
 import { createReactionService } from '@/lib/reactions';
 
-const DEMO_PROFILE_ID =
+const FALLBACK_PROFILE_ID =
   process.env.SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? '';
 
-function resolveAuthorId(explicit?: string | null) {
-  return explicit ?? DEMO_PROFILE_ID;
+function resolveUserId(userId: string | null | undefined) {
+  if (userId) {
+    return userId;
+  }
+  if (FALLBACK_PROFILE_ID) {
+    console.warn('Using fallback demo profile id. Configure Supabase Auth for production.');
+    return FALLBACK_PROFILE_ID;
+  }
+  return null;
 }
 
 export async function submitCommentAction(input: {
   threadId: string;
   content: string;
   parentId?: string | null;
-  authorId?: string | null;
 }) {
-  const authorId = resolveAuthorId(input.authorId);
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const authorId = resolveUserId(user?.id);
   if (!authorId) {
     return { success: false, error: 'AUTHOR_ID_MISSING' } as const;
   }
@@ -28,9 +39,8 @@ export async function submitCommentAction(input: {
     return { success: false, error: 'EMPTY_CONTENT' } as const;
   }
 
-  const adminClient = createSupabaseAdminClient();
   const commentRepo = createSupabaseCommentRepository({
-    getClient: async () => adminClient,
+    getClient: async () => supabase,
   });
   const commentService = createCommentService({
     commentRepo,
@@ -54,16 +64,19 @@ export async function submitCommentAction(input: {
 
 export async function toggleHeartAction(input: {
   commentId: string;
-  reactorId?: string | null;
 }) {
-  const reactorId = resolveAuthorId(input.reactorId);
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const reactorId = resolveUserId(user?.id);
   if (!reactorId) {
     return { success: false, error: 'REACTOR_ID_MISSING' } as const;
   }
 
-  const adminClient = createSupabaseAdminClient();
   const reactionRepo = createSupabaseReactionRepository({
-    getClient: async () => adminClient,
+    getClient: async () => supabase,
   });
   const reactionService = createReactionService({ reactionRepo });
 

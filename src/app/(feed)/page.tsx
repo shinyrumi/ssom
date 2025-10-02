@@ -1,4 +1,5 @@
 ﻿import { Suspense } from 'react';
+import { createSupabaseServerClient } from '@/lib/adapters/supabase/server-client';
 import { createThreadService } from '@/lib/threads';
 import { createCommentService, createDefaultCommentTreeBuilder } from '@/lib/comments';
 import { createReactionService } from '@/lib/reactions';
@@ -9,12 +10,19 @@ import { FeedSkeleton } from './_components/feed-skeleton';
 import { FeedThread } from './_components/feed-thread';
 
 async function loadFeedData() {
-  const viewerId =
-    process.env.SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerId = user?.id ?? null;
 
   const threadRepo = createSupabaseThreadRepository();
-  const commentRepo = createSupabaseCommentRepository();
-  const reactionRepo = createSupabaseReactionRepository();
+  const commentRepo = createSupabaseCommentRepository({
+    getClient: async () => supabase,
+  });
+  const reactionRepo = createSupabaseReactionRepository({
+    getClient: async () => supabase,
+  });
 
   const threadService = createThreadService({ threadRepo });
   const commentService = createCommentService({

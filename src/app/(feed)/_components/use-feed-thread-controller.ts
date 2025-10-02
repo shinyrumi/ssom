@@ -21,6 +21,7 @@ export type FeedThreadController = {
   banner: MutualLikeBanner | null;
   replyTargetId: string | null;
   toast: ToastState;
+  viewerId: string | null;
   handleTopLevelSubmit: (content: string) => Promise<void>;
   handleReplySubmit: (content: string, parentId: string) => Promise<void>;
   handleToggleHeart: (commentId: string) => Promise<void>;
@@ -28,7 +29,7 @@ export type FeedThreadController = {
   cancelReply: () => void;
 };
 
-const VIEWER_ID_FALLBACK = process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? 'demo-viewer';
+const VIEWER_ID_FALLBACK = process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
 
 export function useFeedThreadController(data: FeedThreadData): FeedThreadController {
   const viewerId = data.viewerId ?? VIEWER_ID_FALLBACK;
@@ -49,8 +50,9 @@ export function useFeedThreadController(data: FeedThreadData): FeedThreadControl
         interactions,
         notify,
         clearReplyTarget: () => setReplyTargetId(null),
+        viewerId,
       }),
-    [interactions, notify],
+    [interactions, notify, viewerId],
   );
 
   const hasThread = useMemo(() => Boolean(data.thread), [data.thread]);
@@ -62,6 +64,7 @@ export function useFeedThreadController(data: FeedThreadData): FeedThreadControl
     banner: interactions.banner,
     replyTargetId,
     toast,
+    viewerId,
     handleTopLevelSubmit: handlers.handleTopLevelSubmit,
     handleReplySubmit: handlers.handleReplySubmit,
     handleToggleHeart: handlers.handleToggleHeart,
@@ -74,21 +77,32 @@ type HandlerFactoryArgs = {
   interactions: ReturnType<typeof useCommentInteractions>;
   notify: (message: string, variant: ToastVariant) => void;
   clearReplyTarget: () => void;
+  viewerId: string | null;
 };
 
-function createInteractionHandlers({ interactions, notify, clearReplyTarget }: HandlerFactoryArgs) {
+function createInteractionHandlers({ interactions, notify, clearReplyTarget, viewerId }: HandlerFactoryArgs) {
+  const requireSession = () => {
+    if (!viewerId) {
+      notify('로그인이 필요합니다.', 'error');
+      throw new Error('AUTHOR_ID_MISSING');
+    }
+  };
+
   const handleTopLevelSubmit = async (content: string) => {
+    requireSession();
     await interactions.createComment(content, null);
     notify('댓글이 등록되었어요.', 'success');
   };
 
   const handleReplySubmit = async (content: string, parentId: string) => {
+    requireSession();
     await interactions.createComment(content, parentId);
     notify('답글이 등록되었어요.', 'success');
     clearReplyTarget();
   };
 
   const handleToggleHeart = async (commentId: string) => {
+    requireSession();
     try {
       const active = await interactions.toggleHeart(commentId);
       notify(active ? '하트를 보냈어요.' : '하트를 취소했어요.', active ? 'success' : 'info');
