@@ -1,6 +1,14 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from 'react';
 import type { CommentNode } from '@/lib/comments';
 import type { MutualLikeBanner } from '@/lib/reactions';
 import type { Thread } from '@/lib/threads';
@@ -24,16 +32,16 @@ type UseCommentInteractionsParams = {
 type SharedContext = {
   thread: Thread | null;
   viewerId: string;
-  commentsRef: React.MutableRefObject<CommentNode[]>;
-  setComments: React.Dispatch<React.SetStateAction<CommentNode[]>>;
-  setBanner: React.Dispatch<React.SetStateAction<MutualLikeBanner | null>>;
+  commentsRef: MutableRefObject<CommentNode[]>;
+  setComments: Dispatch<SetStateAction<CommentNode[]>>;
+  setBanner: Dispatch<SetStateAction<MutualLikeBanner | null>>;
 };
 
 type UseCommentInteractionsResult = {
   comments: CommentNode[];
   banner: MutualLikeBanner | null;
-  createComment: (content: string) => Promise<void>;
-  toggleHeart: (commentId: string) => Promise<void>;
+  createComment: (content: string, parentId?: string | null) => Promise<void>;
+  toggleHeart: (commentId: string) => Promise<boolean>;
 };
 
 export function useCommentInteractions({
@@ -49,9 +57,6 @@ export function useCommentInteractions({
 
   useEffect(() => {
     setComments(normalizedInitial);
-  }, [normalizedInitial]);
-
-  useEffect(() => {
     commentsRef.current = normalizedInitial;
   }, [normalizedInitial]);
 
@@ -74,12 +79,12 @@ export function useCommentInteractions({
   return {
     comments,
     banner,
-    createComment: (content: string) => performCreateComment(ctx, content),
+    createComment: (content: string, parentId?: string | null) => performCreateComment(ctx, content, parentId ?? null),
     toggleHeart: (commentId: string) => performToggleHeart(ctx, commentId),
   };
 }
 
-async function performCreateComment(ctx: SharedContext, content: string) {
+async function performCreateComment(ctx: SharedContext, content: string, parentId: string | null) {
   if (!ctx.thread) {
     throw new Error('THREAD_MISSING');
   }
@@ -94,7 +99,7 @@ async function performCreateComment(ctx: SharedContext, content: string) {
     id: optimisticId,
     threadId: ctx.thread.id,
     authorId: ctx.viewerId,
-    parentId: null,
+    parentId,
     content: trimmed,
     createdAt: new Date().toISOString(),
     heartCount: 0,
@@ -107,6 +112,7 @@ async function performCreateComment(ctx: SharedContext, content: string) {
   const result = await submitCommentAction({
     threadId: ctx.thread.id,
     content: trimmed,
+    parentId,
   });
 
   if (result.success) {
@@ -118,10 +124,10 @@ async function performCreateComment(ctx: SharedContext, content: string) {
   throw new Error(result.error);
 }
 
-async function performToggleHeart(ctx: SharedContext, commentId: string) {
+async function performToggleHeart(ctx: SharedContext, commentId: string): Promise<boolean> {
   const existing = findCommentNode(ctx.commentsRef.current, commentId);
   if (!existing) {
-    return;
+    return false;
   }
 
   const optimisticIsActive = !existing.viewerHasHearted;
@@ -146,7 +152,7 @@ async function performToggleHeart(ctx: SharedContext, commentId: string) {
       })),
     );
     ctx.setBanner(result.mutualLikeBanner ?? null);
-    return;
+    return result.reaction.isActive;
   }
 
   ctx.setComments((prev) =>

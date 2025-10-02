@@ -3,50 +3,105 @@
 import { useState, useTransition } from 'react';
 
 type CommentComposerProps = {
-  onSubmit: (content: string) => Promise<void>;
+  onSubmit: (content: string, parentId?: string | null) => Promise<void>;
+  parentId?: string | null;
+  placeholder?: string;
+  onCancel?: () => void;
 };
 
-export const CommentComposer = ({ onSubmit }: CommentComposerProps) => {
+type ComposerState = {
+  message: string;
+  setMessage: (value: string) => void;
+  error: string | null;
+  setError: (value: string | null) => void;
+  isPending: boolean;
+  startTransition: ReturnType<typeof useTransition>[1];
+};
+
+export const CommentComposer = ({ onSubmit, parentId = null, placeholder, onCancel }: CommentComposerProps) => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    startTransition(async () => {
-      try {
-        await onSubmit(message);
-        setMessage('');
-        setError(null);
-      } catch (submissionError) {
-        setError(resolveComposerError(submissionError));
-      }
-    });
-  };
+  const state: ComposerState = { message, setMessage, error, setError, isPending, startTransition };
+  const handleSubmit = createSubmitHandler({ state, onSubmit, parentId, onCancel });
 
   return (
     <form onSubmit={handleSubmit} className="rounded-3xl bg-neutral-900 p-4 shadow-inner shadow-black/20">
       <textarea
         value={message}
         onChange={(event) => setMessage(event.target.value)}
-        placeholder="오늘의 질문에 답해 보세요"
+        placeholder={placeholder ?? '오늘의 질문에 답해 보세요'}
         className="w-full resize-none rounded-2xl bg-neutral-950/60 p-3 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-rose-500"
-        rows={3}
+        rows={parentId ? 2 : 3}
         disabled={isPending}
       />
-      <div className="mt-2 flex items-center justify-between">
-        <span className="text-xs text-rose-400/80">{error}</span>
+      <ComposerActions
+        error={error}
+        isPending={isPending}
+        parentId={parentId}
+        onCancel={onCancel}
+      />
+    </form>
+  );
+};
+
+type SubmitHandlerArgs = {
+  state: ComposerState;
+  onSubmit: (content: string, parentId?: string | null) => Promise<void>;
+  parentId: string | null;
+  onCancel?: () => void;
+};
+
+function createSubmitHandler({ state, onSubmit, parentId, onCancel }: SubmitHandlerArgs) {
+  return (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    state.startTransition(async () => {
+      try {
+        await onSubmit(state.message, parentId);
+        state.setMessage('');
+        state.setError(null);
+        onCancel?.();
+      } catch (submissionError) {
+        state.setError(resolveComposerError(submissionError));
+      }
+    });
+  };
+}
+
+type ComposerActionsProps = {
+  error: string | null;
+  isPending: boolean;
+  parentId: string | null;
+  onCancel?: () => void;
+};
+
+function ComposerActions({ error, isPending, parentId, onCancel }: ComposerActionsProps) {
+  return (
+    <div className="mt-2 flex items-center justify-between">
+      <span className="text-xs text-rose-400/80">{error}</span>
+      <div className="flex items-center gap-2">
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-neutral-700 px-3 py-1 text-xs text-neutral-300"
+            disabled={isPending}
+          >
+            취소
+          </button>
+        ) : null}
         <button
           type="submit"
           className="rounded-full bg-rose-500 px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-60"
           disabled={isPending}
         >
-          {isPending ? '작성 중...' : '댓글 남기기'}
+          {isPending ? '작성 중...' : parentId ? '답글 남기기' : '댓글 남기기'}
         </button>
       </div>
-    </form>
+    </div>
   );
-};
+}
 
 function resolveComposerError(error: unknown): string {
   if (error instanceof Error) {
