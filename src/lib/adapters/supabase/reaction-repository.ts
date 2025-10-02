@@ -11,6 +11,10 @@ type ReactionRow = {
   id: string;
 };
 
+type RepositoryOptions = {
+  getClient?: () => Promise<SupabaseClient>;
+};
+
 async function fetchExistingReaction(
   supabase: SupabaseClient,
   commentId: string,
@@ -69,20 +73,26 @@ async function fetchReactionCount(supabase: SupabaseClient, commentId: string): 
   return count ?? 0;
 }
 
-export const createSupabaseReactionRepository = (): ReactionRepository => ({
-  async toggleHeart(input) {
-    const supabase = await createSupabaseServerClient();
-    const existing = await fetchExistingReaction(supabase, input.commentId, input.reactorId);
-    const isActive = await upsertReaction(supabase, existing, input);
-    const total = await fetchReactionCount(supabase, input.commentId);
+export const createSupabaseReactionRepository = (
+  options?: RepositoryOptions,
+): ReactionRepository => {
+  const getClient = options?.getClient ?? createSupabaseServerClient;
 
-    return { commentId: input.commentId, reactorId: input.reactorId, isActive, total } satisfies ReactionToggleResult;
-  },
+  return {
+    async toggleHeart(input) {
+      const supabase = await getClient();
+      const existing = await fetchExistingReaction(supabase, input.commentId, input.reactorId);
+      const isActive = await upsertReaction(supabase, existing, input);
+      const total = await fetchReactionCount(supabase, input.commentId);
 
-  async getMutualLikeBanner(viewerId: string, targetId: string): Promise<MutualLikeBanner | null> {
-    void viewerId;
-    void targetId;
-    // TODO: Supabase RPC 또는 뷰를 이용한 상호 좋아요 감지 구현 필요
-    return null;
-  },
-});
+      return { commentId: input.commentId, reactorId: input.reactorId, isActive, total } satisfies ReactionToggleResult;
+    },
+
+    async getMutualLikeBanner(viewerId: string, targetId: string): Promise<MutualLikeBanner | null> {
+      void viewerId;
+      void targetId;
+      // TODO: Supabase RPC 또는 뷰를 이용한 상호 좋아요 감지 구현 필요
+      return null;
+    },
+  };
+};

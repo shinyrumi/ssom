@@ -21,6 +21,7 @@ export const createCommentService = (
   async createComment(input) {
     const draft = deps.commentRepo.createDraft({
       threadId: input.threadId,
+      authorId: input.authorId,
       parentId: input.parentId ?? null,
       content: input.content,
     });

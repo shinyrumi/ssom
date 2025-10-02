@@ -15,6 +15,7 @@ export type CommentNode = Comment & {
 
 export type CreateCommentInput = {
   threadId: string;
+  authorId: string;
   parentId?: string | null;
   content: string;
 };
@@ -22,6 +23,7 @@ export type CreateCommentInput = {
 export type CommentDraft = {
   id: string;
   threadId: string;
+  authorId: string;
   parentId: string | null;
   content: string;
   createdAt: string;

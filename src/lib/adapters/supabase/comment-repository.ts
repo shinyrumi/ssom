@@ -1,4 +1,5 @@
 ﻿import { randomUUID } from 'node:crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from './server-client';
 import type {
   Comment,
@@ -30,51 +31,63 @@ function mapComment(row: CommentRow): Comment {
   };
 }
 
-export const createSupabaseCommentRepository = (): CommentRepository => ({
-  async listByThread(threadId: string) {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('comments')
-      .select('id, thread_id, author_id, parent_id, content, created_at')
-      .eq('thread_id', threadId)
-      .order('created_at', { ascending: true })
-      .returns<CommentRow[]>();
+type RepositoryOptions = {
+  getClient?: () => Promise<SupabaseClient>;
+};
 
-    if (error || !data) {
-      console.error('listByThread error', error?.message);
-      return [];
-    }
+export const createSupabaseCommentRepository = (
+  options?: RepositoryOptions,
+): CommentRepository => {
+  const getClient = options?.getClient ?? createSupabaseServerClient;
 
-    return data.map((row) => mapComment(row));
-  },
+  return {
+    async listByThread(threadId: string) {
+      const supabase = await getClient();
+      const { data, error } = await supabase
+        .from('comments')
+        .select('id, thread_id, author_id, parent_id, content, created_at')
+        .eq('thread_id', threadId)
+        .order('created_at', { ascending: true })
+        .returns<CommentRow[]>();
 
-  createDraft(input: CreateCommentInput): CommentDraft {
-    return {
-      id: randomUUID(),
-      threadId: input.threadId,
-      parentId: input.parentId ?? null,
-      content: input.content,
-      createdAt: new Date().toISOString(),
-    };
-  },
+      if (error || !data) {
+        console.error('listByThread error', error?.message);
+        return [];
+      }
 
-  async persistComment(draft: CommentDraft) {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .from('comments')
-      .insert({
-        id: draft.id,
-        thread_id: draft.threadId,
-        parent_id: draft.parentId,
-        content: draft.content,
-      })
-      .select('id, thread_id, author_id, parent_id, content, created_at')
-      .maybeSingle<CommentRow>();
+      return data.map((row) => mapComment(row));
+    },
 
-    if (error || !data) {
-      throw new Error(error?.message ?? '댓글 저장 실패');
-    }
+    createDraft(input: CreateCommentInput): CommentDraft {
+      return {
+        id: randomUUID(),
+        threadId: input.threadId,
+        authorId: input.authorId,
+        parentId: input.parentId ?? null,
+        content: input.content,
+        createdAt: new Date().toISOString(),
+      };
+    },
 
-    return mapComment(data);
-  },
-});
+    async persistComment(draft: CommentDraft) {
+      const supabase = await getClient();
+      const { data, error } = await supabase
+        .from('comments')
+        .insert({
+          id: draft.id,
+          thread_id: draft.threadId,
+          author_id: draft.authorId,
+          parent_id: draft.parentId,
+          content: draft.content,
+        })
+        .select('id, thread_id, author_id, parent_id, content, created_at')
+        .maybeSingle<CommentRow>();
+
+      if (error || !data) {
+        throw new Error(error?.message ?? '댓글 저장 실패');
+      }
+
+      return mapComment(data);
+    },
+  };
+};
