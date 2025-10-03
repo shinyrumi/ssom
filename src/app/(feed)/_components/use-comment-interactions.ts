@@ -22,6 +22,8 @@ import {
 } from '@/lib/comments/tree-ops';
 import { submitCommentAction, toggleHeartAction } from '../actions';
 
+const FALLBACK_VIEWER_ID = process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
+
 type UseCommentInteractionsParams = {
   thread: Thread | null;
   viewerId: string | null;
@@ -70,7 +72,7 @@ export function useCommentInteractions({
 
   const ctx: SharedContext = {
     thread,
-    viewerId,
+    viewerId: viewerId ?? FALLBACK_VIEWER_ID,
     commentsRef,
     setComments,
     setBanner,

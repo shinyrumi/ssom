@@ -9,12 +9,15 @@ import { createSupabaseReactionRepository } from '@/lib/adapters/supabase/reacti
 import { FeedSkeleton } from './_components/feed-skeleton';
 import { FeedThread } from './_components/feed-thread';
 
+const FALLBACK_PROFILE_ID =
+  process.env.SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
+
 async function loadFeedData() {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const viewerId = user?.id ?? null;
+  const viewerId = user?.id ?? FALLBACK_PROFILE_ID;
 
   const threadRepo = createSupabaseThreadRepository();
   const commentRepo = createSupabaseCommentRepository({

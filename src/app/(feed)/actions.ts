@@ -7,17 +7,10 @@ import { createCommentService, createDefaultCommentTreeBuilder } from '@/lib/com
 import { createReactionService } from '@/lib/reactions';
 
 const FALLBACK_PROFILE_ID =
-  process.env.SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? '';
+  process.env.SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
 
 function resolveUserId(userId: string | null | undefined) {
-  if (userId) {
-    return userId;
-  }
-  if (FALLBACK_PROFILE_ID) {
-    console.warn('Using fallback demo profile id. Configure Supabase Auth for production.');
-    return FALLBACK_PROFILE_ID;
-  }
-  return null;
+  return userId ?? FALLBACK_PROFILE_ID;
 }
 
 export async function submitCommentAction(input: {

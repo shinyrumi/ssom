@@ -1,6 +1,18 @@
-﻿-- Progressive level schema draft
+-- Progressive level schema draft
 
-create type if not exists public.profile_level as enum ('L1', 'L2', 'L3', 'L4');
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typname = 'profile_level'
+      AND n.nspname = 'public'
+  ) THEN
+    CREATE TYPE public.profile_level AS ENUM ('L1', 'L2', 'L3', 'L4');
+  END IF;
+END;
+$$;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users on delete cascade,
@@ -219,3 +231,4 @@ select public.ensure_policy(
 );
 
 -- TODO: add moderator roles and admin bypass policies later.
+
