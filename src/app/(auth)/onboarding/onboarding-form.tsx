@@ -15,14 +15,17 @@ type FormState = {
   setNickname: (value: string) => void;
   setAvatarPreset: (value: string) => void;
   setError: (value: string | null) => void;
+  onSuccess?: () => void;
 };
 
 export function OnboardingForm({
   defaultNickname,
   defaultAvatar,
+  onSuccess,
 }: {
   defaultNickname?: string;
   defaultAvatar?: string;
+  onSuccess?: () => void;
 }) {
   const [nickname, setNickname] = useState(defaultNickname ?? '');
   const [avatarPreset, setAvatarPreset] = useState(defaultAvatar ?? AVATAR_PRESETS[0]);
@@ -30,8 +33,8 @@ export function OnboardingForm({
   const [isPending, startTransition] = useTransition();
 
   const formState: FormState = useMemo(
-    () => ({ nickname, avatarPreset, error, isPending, startTransition, setNickname, setAvatarPreset, setError }),
-    [avatarPreset, error, isPending, nickname, startTransition],
+    () => ({ nickname, avatarPreset, error, isPending, startTransition, setNickname, setAvatarPreset, setError, onSuccess }),
+    [avatarPreset, error, isPending, nickname, onSuccess, startTransition],
   );
 
   const handleSubmit = useSubmitHandler(formState);
@@ -58,7 +61,10 @@ function useSubmitHandler(state: FormState) {
         const result = await saveProfileAction(formData);
         if (result?.error) {
           state.setError(resolveErrorMessage(result.error));
+          return;
         }
+        state.setError(null);
+        state.onSuccess?.();
       });
     },
     [state],
@@ -115,7 +121,7 @@ function SubmitButton({ isPending }: { isPending: boolean }) {
       className="w-full rounded-full bg-rose-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
       disabled={isPending}
     >
-      {isPending ? '저장 중...' : '시작하기'}
+      {isPending ? '저장 중...' : '계속하기'}
     </button>
   );
 }

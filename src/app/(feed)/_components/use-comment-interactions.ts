@@ -22,7 +22,7 @@ import {
 } from '@/lib/comments/tree-ops';
 import { submitCommentAction, toggleHeartAction } from '../actions';
 
-const FALLBACK_VIEWER_ID = process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
+const FALLBACK_VIEWER_ID = process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_DEMO_VIEWER_ID ?? null;
 
 type UseCommentInteractionsParams = {
   thread: Thread | null;

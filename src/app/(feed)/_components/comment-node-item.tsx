@@ -1,17 +1,17 @@
 ﻿'use client';
 
 import { useCallback, useMemo, useTransition } from 'react';
-import type { CommentNode } from '@/lib/comments';
 import { commentDepthPadding } from '@/lib/comments/tree-ops';
 import { cn } from '@/lib/utils';
 import { CommentComposer } from './comment-composer';
-
-type CommentNodeItemProps = { node: CommentNode; depth: number; onToggleHeart: (commentId: string) => Promise<void>; onSelectReply: (commentId: string) => void; onCancelReply: () => void; onSubmitReply: (content: string, parentId: string) => Promise<void>; activeReplyId: string | null; canHeart: boolean; canReply: boolean; };
-type CommentCardProps = { node: CommentNode; pending: boolean; onToggleHeart: () => void; onReply: () => void; canHeart: boolean; canReply: boolean; };
-type CommentActionsProps = { heartCount: number; viewerHasHearted: boolean; pending: boolean; onToggleHeart: () => void; onReply: () => void; canHeart: boolean; canReply: boolean; };
-type ReplyAreaProps = { isReplying: boolean; nodeId: string; onSubmitReply: (content: string, parentId: string) => Promise<void>; onCancelReply: () => void; canReply: boolean; };
-type CommentRepliesProps = { nodes: CommentNode[]; depth: number; activeReplyId: string | null; canHeart: boolean; canReply: boolean; handlers: Pick<CommentNodeItemProps, 'onToggleHeart' | 'onSelectReply' | 'onCancelReply' | 'onSubmitReply'>; };
-type ToggleHandler = { pending: boolean; handleToggle: () => void; };
+import type {
+  CommentActionsProps,
+  CommentCardProps,
+  CommentNodeItemProps,
+  CommentRepliesProps,
+  ReplyAreaProps,
+  ToggleHandler,
+} from './comment-types';
 
 export function CommentNodeItem(props: CommentNodeItemProps) {
   const { node, depth, activeReplyId, canHeart, canReply, onSelectReply } = props;
@@ -37,6 +37,7 @@ export function CommentNodeItem(props: CommentNodeItemProps) {
         canHeart={canHeart}
         canReply={canReply}
       />
+
       <ReplyArea
         isReplying={isReplying}
         nodeId={node.id}
@@ -44,6 +45,7 @@ export function CommentNodeItem(props: CommentNodeItemProps) {
         onCancelReply={props.onCancelReply}
         canReply={canReply}
       />
+
       <CommentReplies
         depth={depth + 1}
         nodes={node.replies}

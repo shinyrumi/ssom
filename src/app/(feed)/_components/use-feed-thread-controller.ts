@@ -29,7 +29,7 @@ export type FeedThreadController = {
   cancelReply: () => void;
 };
 
-const VIEWER_ID_FALLBACK = process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
+const VIEWER_ID_FALLBACK = process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_DEMO_VIEWER_ID ?? null;
 
 export function useFeedThreadController(data: FeedThreadData): FeedThreadController {
   const viewerId = data.viewerId ?? VIEWER_ID_FALLBACK;

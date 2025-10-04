@@ -19,3 +19,10 @@ export type ProfileDraft = {
   nickname: string;
   avatarPreset: string;
 };
+
+export type ProfileLevel = {
+  profileId: string;
+  level: Level;
+  data: Record<string, unknown>;
+  unlockedAt: string;
+};

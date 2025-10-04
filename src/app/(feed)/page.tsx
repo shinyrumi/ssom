@@ -1,4 +1,5 @@
 ﻿import { Suspense } from 'react';
+import { loadDemoFeedData } from '@/lib/demo/feed-demo';
 import { createSupabaseServerClient } from '@/lib/adapters/supabase/server-client';
 import { createThreadService } from '@/lib/threads';
 import { createCommentService, createDefaultCommentTreeBuilder } from '@/lib/comments';
@@ -10,9 +11,18 @@ import { FeedSkeleton } from './_components/feed-skeleton';
 import { FeedThread } from './_components/feed-thread';
 
 const FALLBACK_PROFILE_ID =
-  process.env.SUPABASE_DEMO_PROFILE_ID ?? process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ?? null;
+  process.env.SUPABASE_DEMO_PROFILE_ID ??
+  process.env.NEXT_PUBLIC_SUPABASE_DEMO_PROFILE_ID ??
+  process.env.NEXT_PUBLIC_DEMO_VIEWER_ID ??
+  null;
+
+const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
 
 async function loadFeedData() {
+  if (isDemoMode) {
+    return loadDemoFeedData();
+  }
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
